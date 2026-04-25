@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Downloader HD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">TikTok Downloader</h1>
+        <p class="text-gray-500 mb-6">Unduh video TikTok tanpa watermark secara gratis</p>
+
+        <form id="downloadForm" class="space-y-4">
+            <input type="url" id="videoUrl" placeholder="Tempel tautan TikTok di sini..." required
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="submit"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200">
+                Download
+            </button>
+        </form>
+
+        <div id="resultArea" class="mt-8 hidden space-y-3">
+            <p id="statusText" class="text-sm font-medium text-gray-700">⏳ Sedang memproses...</p>
+
+            <button
+                class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 hidden"
+                id="btnMp4">
+                Unduh MP4 (Video HD)
+            </button>
+            <button
+                class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 hidden"
+                id="btnMp3">
+                Unduh MP3 (Audio)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('downloadForm');
+        const resultArea = document.getElementById('resultArea');
+        const statusText = document.getElementById('statusText');
+        const btnMp4 = document.getElementById('btnMp4');
+        const btnMp3 = document.getElementById('btnMp3');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const urlInput = document.getElementById('videoUrl').value;
+
+            // Tampilkan status loading
+            resultArea.classList.remove('hidden');
+            statusText.innerText = "⏳ Sedang mengambil video dari TikTok...";
+            statusText.className = "text-sm font-medium text-gray-700"; // Reset warna teks
+            btnMp4.classList.add('hidden');
+            btnMp3.classList.add('hidden');
+
+            try {
+                // Menembak ke Backend Anda sendiri yang berjalan di port 3000
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: urlInput }) // Mengirimkan URL yang diketik pengguna
+                });
+
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    statusText.innerText = "✅ Video siap diunduh!";
+                    statusText.className = "text-sm font-medium text-green-600";
+
+                    // Memasukkan link asli video/audio ke tombol
+                    btnMp4.onclick = () => window.open(data.url_video_no_watermark, '_blank');
+                    btnMp3.onclick = () => window.open(data.url_audio, '_blank');
+
+                    btnMp4.classList.remove('hidden');
+                    btnMp3.classList.remove('hidden');
+                } else {
+                    statusText.innerText = `❌ ${data.message}`;
+                    statusText.className = "text-sm font-medium text-red-600";
+                }
+
+            } catch (error) {
+                // Menangkap error jika backend mati atau tidak ada internet
+                statusText.innerText = "❌ Terjadi kesalahan jaringan. Pastikan backend menyala.";
+                statusText.className = "text-sm font-medium text-red-600";
+                console.error("Error Detail:", error);
+            }
+        });
+    </script>
+</body>
+
+</html>
