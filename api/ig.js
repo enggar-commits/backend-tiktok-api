@@ -18,38 +18,67 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // 1. Membersihkan link dari parameter pelacak (?igsh=...)
+        // Membersihkan link dari parameter pelacak
         const cleanUrl = targetUrl.split('?')[0];
-        console.log(`Menembus IG dengan link bersih: ${cleanUrl}`);
+        console.log(`Memulai perburuan video: ${cleanUrl}`);
 
-        // 2. Menggunakan API Publik Indonesia (Spesialis Bot)
-        const apiUrl = `https://api.ryzendesu.vip/api/downloader/igdl?url=${encodeURIComponent(cleanUrl)}`;
-
-        const fetchResponse = await fetch(apiUrl);
-        const data = await fetchResponse.json();
+        // DAFTAR 4 SERVER PENEMBUS INSTAGRAM (Sistem Cadangan)
+        const apis = [
+            `https://api.siputzx.my.id/api/d/igdl?url=${encodeURIComponent(cleanUrl)}`,
+            `https://aemt.me/download/igdl?url=${encodeURIComponent(cleanUrl)}`,
+            `https://bk9.fun/download/instagram?url=${encodeURIComponent(cleanUrl)}`,
+            `https://api.ryzendesu.vip/api/downloader/igdl?url=${encodeURIComponent(cleanUrl)}`
+        ];
 
         let videoUrlAsli = null;
 
-        // 3. Membongkar brankas data dari Ryzen API
-        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            // Ryzen biasanya menaruh link .mp4 mentah di dalam array 'data'
-            videoUrlAsli = data.data[0].url;
-        } else if (data && data.url) {
-            videoUrlAsli = data.url;
+        // Mesin akan mencoba server satu per satu
+        for (let i = 0; i < apis.length; i++) {
+            try {
+                console.log(`[+] Mencoba Server ${i + 1}...`);
+                const response = await fetch(apis[i]);
+                const data = await response.json();
+
+                // Mencari letak link MP4 dari tumpukan data server
+                let tempUrl = null;
+                if (data && data.data && data.data[0] && data.data[0].url) tempUrl = data.data[0].url;
+                else if (data && data.url) tempUrl = data.url;
+                else {
+                    // Sapu bersih cari link mp4
+                    JSON.stringify(data, (key, value) => {
+                        if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
+                            tempUrl = value;
+                        }
+                        return value;
+                    });
+                }
+
+                if (tempUrl) {
+                    videoUrlAsli = tempUrl;
+                    console.log(`✅ Berhasil ditembus oleh Server ${i + 1}!`);
+                    break; // Berhenti mencari jika video sudah ketemu
+                }
+            } catch (err) {
+                console.log(`❌ Server ${i + 1} Gagal/Down. Beralih ke server berikutnya...`);
+                // Biarkan error, loop akan otomatis lanjut ke server berikutnya
+            }
         }
 
+        // Hasil Akhir
         if (videoUrlAsli) {
             res.status(200).json({
                 status: "success",
                 url_video: videoUrlAsli
             });
         } else {
-            console.log("Respon kegagalan API Lokal:", data);
-            res.status(400).json({ status: "error", message: "Gagal menembus keamanan Instagram untuk video ini." });
+            res.status(400).json({
+                status: "error",
+                message: "Semua server API saat ini sedang sibuk/down. Coba lagi dalam beberapa menit."
+            });
         }
 
     } catch (error) {
-        console.error("Error jaringan mesin:", error);
-        res.status(500).json({ status: "error", message: "Server penghubung sedang sibuk/gangguan." });
+        console.error("Kesalahan sistem utama:", error);
+        res.status(500).json({ status: "error", message: "Sistem pusat Vercel mengalami gangguan." });
     }
 };
