@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Downloader HD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen">
+
+    <a href="/" class="mb-6 text-pink-600 font-semibold hover:underline">
+        &larr; Pindah ke TikTok Downloader
+    </a>
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center border-t-4 border-pink-500">
+        <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 mb-2">
+            IG Downloader
+        </h1>
+        <p class="text-gray-500 mb-6">Unduh Video & Reels Instagram</p>
+
+        <form id="downloadForm" class="space-y-4">
+            <input type="url" id="videoUrl" placeholder="Tempel tautan Instagram di sini..." required
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500">
+            <button type="submit"
+                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200">
+                Download Reels/Video
+            </button>
+        </form>
+
+        <div id="resultArea" class="mt-8 hidden space-y-3">
+            <p id="statusText" class="text-sm font-medium text-gray-700">⏳ Sedang memproses...</p>
+
+            <button
+                class="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 hidden"
+                id="btnMp4">
+                Unduh Video (MP4)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('downloadForm');
+        const resultArea = document.getElementById('resultArea');
+        const statusText = document.getElementById('statusText');
+        const btnMp4 = document.getElementById('btnMp4');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const urlInput = document.getElementById('videoUrl').value;
+
+            resultArea.classList.remove('hidden');
+            statusText.innerText = "⏳ Memeriksa server Instagram...";
+            statusText.className = "text-sm font-medium text-gray-700";
+            btnMp4.classList.add('hidden');
+
+            try {
+                // Perhatikan: Kita menembak ke backend baru bernama '/api/ig'
+                const response = await fetch('/api/ig', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlInput })
+                });
+
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    statusText.innerText = "✅ Video siap diunduh!";
+                    statusText.className = "text-sm font-medium text-green-600";
+                    btnMp4.onclick = () => window.open(data.url_video, '_blank');
+                    btnMp4.classList.remove('hidden');
+                } else {
+                    statusText.innerText = `❌ ${data.message}`;
+                    statusText.className = "text-sm font-medium text-red-600";
+                }
+            } catch (error) {
+                statusText.innerText = "❌ Terjadi kesalahan jaringan.";
+                statusText.className = "text-sm font-medium text-red-600";
+            }
+        });
+    </script>
+</body>
+
+</html>
