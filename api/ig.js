@@ -20,11 +20,9 @@ module.exports = async (req, res) => {
     try {
         console.log(`Memproses link IG: ${targetUrl}`);
 
-        // Data langsung diambil dari screenshot RapidAPI Anda
         const apiKey = "6c46502debmshbc49b6994b7a613p160159jsna8424ea66fa6";
         const apiHost = "instagram-reels-downloader-api.p.rapidapi.com";
 
-        // URL sesuai dengan format di screenshot (menggunakan /download?url=)
         const apiUrl = `https://${apiHost}/download?url=${encodeURIComponent(targetUrl)}`;
 
         const fetchResponse = await fetch(apiUrl, {
@@ -37,20 +35,30 @@ module.exports = async (req, res) => {
 
         const apiData = await fetchResponse.json();
 
-        // Mencari letak link video mp4 di dalam balasan API
+        // ==========================================
+        // ALGORITMA PENCARI VIDEO PINTAR
+        // ==========================================
         let videoUrlAsli = null;
 
-        if (apiData.video_url) {
-            videoUrlAsli = apiData.video_url;
-        } else if (apiData.data && apiData.data.video_url) {
-            videoUrlAsli = apiData.data.video_url;
-        } else if (apiData.url) {
-            videoUrlAsli = apiData.url;
-        } else if (apiData.data && apiData.data.url) {
-            videoUrlAsli = apiData.data.url;
-        } else if (Array.isArray(apiData) && apiData[0].url) {
-            videoUrlAsli = apiData[0].url;
+        // Tahap 1: Cek nama kunci yang paling umum untuk video
+        if (apiData.data && apiData.data.video_url) videoUrlAsli = apiData.data.video_url;
+        else if (apiData.data && apiData.data.videoUrl) videoUrlAsli = apiData.data.videoUrl;
+        else if (apiData.video_url) videoUrlAsli = apiData.video_url;
+        else if (apiData.videoUrl) videoUrlAsli = apiData.videoUrl;
+        else if (apiData.data && apiData.data.download_url) videoUrlAsli = apiData.data.download_url;
+
+        // Tahap 2: Trik "Sapu Bersih" (Jika Tahap 1 gagal)
+        // Membongkar seluruh isi data dan mencari tautan berakhiran .mp4
+        if (!videoUrlAsli) {
+            JSON.stringify(apiData, (key, value) => {
+                if (!videoUrlAsli && typeof value === 'string' && value.includes('.mp4')) {
+                    videoUrlAsli = value;
+                }
+                return value;
+            });
         }
+
+        // ==========================================
 
         if (videoUrlAsli) {
             res.status(200).json({
@@ -58,8 +66,8 @@ module.exports = async (req, res) => {
                 url_video: videoUrlAsli
             });
         } else {
-            console.log("Format data dari API tidak dikenali:", apiData);
-            res.status(400).json({ status: "error", message: "Video tidak ditemukan, akun di-private, atau format salah." });
+            console.log("Format gagal dilacak:", apiData);
+            res.status(400).json({ status: "error", message: "Video tidak ditemukan. Pastikan akun tidak di-private." });
         }
 
     } catch (error) {
