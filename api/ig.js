@@ -18,12 +18,24 @@ module.exports = async (req, res) => {
     }
 
     try {
-        console.log(`Memproses link IG: ${targetUrl}`);
+        // ==========================================
+        // ALGORITMA PEMBERSIH URL (ANTI-PELACAK)
+        // Membuang kode seperti ?igsh=... agar API tidak bingung
+        // ==========================================
+        let cleanUrl = targetUrl;
+        try {
+            const urlObj = new URL(targetUrl);
+            cleanUrl = urlObj.origin + urlObj.pathname; // Hanya mengambil https://www.instagram.com/reel/ID/
+        } catch (e) {
+            console.log("Format URL tidak standar, menggunakan URL asli.");
+        }
+
+        console.log(`Memproses link IG Bersih: ${cleanUrl}`);
 
         const apiKey = "6c46502debmshbc49b6994b7a613p160159jsna8424ea66fa6";
         const apiHost = "instagram-reels-downloader-api.p.rapidapi.com";
 
-        const apiUrl = `https://${apiHost}/download?url=${encodeURIComponent(targetUrl)}`;
+        const apiUrl = `https://${apiHost}/download?url=${encodeURIComponent(cleanUrl)}`;
 
         const fetchResponse = await fetch(apiUrl, {
             method: 'GET',
@@ -35,20 +47,15 @@ module.exports = async (req, res) => {
 
         const apiData = await fetchResponse.json();
 
-        // ==========================================
         // ALGORITMA PENCARI VIDEO PINTAR
-        // ==========================================
         let videoUrlAsli = null;
 
-        // Tahap 1: Cek nama kunci yang paling umum untuk video
         if (apiData.data && apiData.data.video_url) videoUrlAsli = apiData.data.video_url;
         else if (apiData.data && apiData.data.videoUrl) videoUrlAsli = apiData.data.videoUrl;
         else if (apiData.video_url) videoUrlAsli = apiData.video_url;
         else if (apiData.videoUrl) videoUrlAsli = apiData.videoUrl;
         else if (apiData.data && apiData.data.download_url) videoUrlAsli = apiData.data.download_url;
 
-        // Tahap 2: Trik "Sapu Bersih" (Jika Tahap 1 gagal)
-        // Membongkar seluruh isi data dan mencari tautan berakhiran .mp4
         if (!videoUrlAsli) {
             JSON.stringify(apiData, (key, value) => {
                 if (!videoUrlAsli && typeof value === 'string' && value.includes('.mp4')) {
@@ -57,8 +64,6 @@ module.exports = async (req, res) => {
                 return value;
             });
         }
-
-        // ==========================================
 
         if (videoUrlAsli) {
             res.status(200).json({
