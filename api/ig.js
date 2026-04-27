@@ -19,54 +19,93 @@ module.exports = async (req, res) => {
 
     try {
         const cleanUrl = targetUrl.split('?')[0];
-        console.log(`Memulai perburuan di server segar: ${cleanUrl}`);
-
-        // DAFTAR SERVER API TERBARU (Update)
-        // Menggunakan kombinasi server yang jarang dilacak oleh Instagram
-        const apis = [
-            `https://api.agatz.my.id/api/igdl?url=${encodeURIComponent(cleanUrl)}`,
-            `https://api.nyxs.pw/dl/ig?url=${encodeURIComponent(cleanUrl)}`,
-            `https://bk9.fun/download/instagram?url=${encodeURIComponent(cleanUrl)}`,
-            `https://delirius-apiofc.vercel.app/download/igdl?url=${encodeURIComponent(cleanUrl)}`
-        ];
+        console.log(`Memulai operasi Hybrid untuk: ${cleanUrl}`);
 
         let videoUrlAsli = null;
+        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-        for (let i = 0; i < apis.length; i++) {
+        // ==========================================
+        // TAHAP 1: MENCOBA JALUR API GRATIS TERBARU
+        // ==========================================
+        const freeApis = [
+            `https://api.joshweb.click/api/ig?url=${encodeURIComponent(cleanUrl)}`,
+            `https://api.vreden.web.id/api/igdownload?url=${encodeURIComponent(cleanUrl)}`
+        ];
+
+        for (let i = 0; i < freeApis.length; i++) {
             try {
-                console.log(`[+] Mengetuk Server ${i + 1}...`);
-
-                const response = await fetch(apis[i], {
+                console.log(`[+] Mengetuk Jalur Gratis ${i + 1}...`);
+                const response = await fetch(freeApis[i], {
                     method: 'GET',
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-                    }
+                    headers: { 'User-Agent': userAgent }
                 });
 
-                // Jika server merespon dengan error (misal 403/500), lewati langsung
-                if (!response.ok) continue;
+                if (response.ok) {
+                    const data = await response.json();
+                    let tempUrl = null;
 
-                const data = await response.json();
+                    // Ekstraktor Ekstrim
+                    JSON.stringify(data, (key, value) => {
+                        if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
+                            tempUrl = value;
+                        }
+                        return value;
+                    });
 
-                // Algoritma Sapu Bersih (Mencari file berakhiran .mp4 di seluruh tumpukan data)
-                let tempUrl = null;
-                JSON.stringify(data, (key, value) => {
-                    if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
-                        tempUrl = value;
+                    if (tempUrl) {
+                        videoUrlAsli = tempUrl;
+                        console.log(`✅ Tembus di Jalur Gratis ${i + 1}!`);
+                        break;
                     }
-                    return value;
-                });
-
-                if (tempUrl) {
-                    videoUrlAsli = tempUrl;
-                    console.log(`✅ Tembus di Server ${i + 1}!`);
-                    break;
                 }
             } catch (err) {
-                console.log(`❌ Server ${i + 1} Error/Timeout. Melompat ke server selanjutnya...`);
+                console.log(`❌ Jalur Gratis ${i + 1} Gagal.`);
             }
         }
 
+        // ==========================================
+        // TAHAP 2: JALUR PRIVAT (RAPIDAPI) SEBAGAI CADANGAN
+        // ==========================================
+        if (!videoUrlAsli) {
+            console.log(`⚠️ Semua jalur gratis gagal. Mengaktifkan RapidAPI...`);
+            try {
+                // Menggunakan Kunci Rahasia yang Anda dapatkan sebelumnya
+                const rapidApiKey = "6c46502debmshbc49b6994b7a613p160159jsna8424ea66fa6";
+                const rapidApiHost = "instagram-reels-downloader-api.p.rapidapi.com";
+                const rapidApiUrl = `https://${rapidApiHost}/download?url=${encodeURIComponent(cleanUrl)}`;
+
+                const rapidResponse = await fetch(rapidApiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-key': rapidApiKey,
+                        'x-rapidapi-host': rapidApiHost,
+                        'User-Agent': userAgent
+                    }
+                });
+
+                if (rapidResponse.ok) {
+                    const rapidData = await rapidResponse.json();
+
+                    // Ekstraktor untuk RapidAPI
+                    JSON.stringify(rapidData, (key, value) => {
+                        if (!videoUrlAsli && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
+                            videoUrlAsli = value;
+                        }
+                        return value;
+                    });
+
+                    if (videoUrlAsli) {
+                        console.log(`✅ Tembus menggunakan RapidAPI!`);
+                    }
+                }
+            } catch (err) {
+                console.log(`❌ RapidAPI juga gagal atau kuota habis.`);
+            }
+        }
+
+        // ==========================================
+        // HASIL AKHIR
+        // ==========================================
         if (videoUrlAsli) {
             res.status(200).json({
                 status: "success",
@@ -75,7 +114,7 @@ module.exports = async (req, res) => {
         } else {
             res.status(400).json({
                 status: "error",
-                message: "Semua jalur gratis diblokir sementara oleh Instagram. Coba beberapa jam lagi."
+                message: "Keamanan Instagram memblokir tarikan ini. Pastikan link adalah Reels publik, atau coba lagi besok."
             });
         }
 
