@@ -18,33 +18,43 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Membersihkan link dari parameter pelacak
         const cleanUrl = targetUrl.split('?')[0];
-        console.log(`Memulai perburuan video: ${cleanUrl}`);
+        console.log(`Memulai perburuan dengan penyamaran: ${cleanUrl}`);
 
-        // DAFTAR 4 SERVER PENEMBUS INSTAGRAM (Sistem Cadangan)
+        // Daftar Server API Publik
         const apis = [
+            `https://api.vreden.web.id/api/igdownload?url=${encodeURIComponent(cleanUrl)}`,
+            `https://widipe.com/download/igdl?url=${encodeURIComponent(cleanUrl)}`,
             `https://api.siputzx.my.id/api/d/igdl?url=${encodeURIComponent(cleanUrl)}`,
-            `https://aemt.me/download/igdl?url=${encodeURIComponent(cleanUrl)}`,
-            `https://bk9.fun/download/instagram?url=${encodeURIComponent(cleanUrl)}`,
             `https://api.ryzendesu.vip/api/downloader/igdl?url=${encodeURIComponent(cleanUrl)}`
         ];
 
         let videoUrlAsli = null;
 
-        // Mesin akan mencoba server satu per satu
         for (let i = 0; i < apis.length; i++) {
             try {
-                console.log(`[+] Mencoba Server ${i + 1}...`);
-                const response = await fetch(apis[i]);
-                const data = await response.json();
+                console.log(`[+] Mengetuk Server ${i + 1} dengan topeng Chrome...`);
 
-                // Mencari letak link MP4 dari tumpukan data server
+                // INI KUNCI RAHASIANYA: Menyamar sebagai manusia (Google Chrome Windows)
+                const response = await fetch(apis[i], {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                        'Accept': 'application/json, text/plain, */*'
+                    }
+                });
+
+                if (!response.ok) throw new Error(`Ditolak oleh server (Status: ${response.status})`);
+
+                const rawText = await response.text();
+                const data = JSON.parse(rawText);
+
+                // Mencari letak link MP4
                 let tempUrl = null;
                 if (data && data.data && data.data[0] && data.data[0].url) tempUrl = data.data[0].url;
+                else if (data && data.data && data.data.url) tempUrl = data.data.url;
                 else if (data && data.url) tempUrl = data.url;
                 else {
-                    // Sapu bersih cari link mp4
                     JSON.stringify(data, (key, value) => {
                         if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
                             tempUrl = value;
@@ -55,16 +65,14 @@ module.exports = async (req, res) => {
 
                 if (tempUrl) {
                     videoUrlAsli = tempUrl;
-                    console.log(`✅ Berhasil ditembus oleh Server ${i + 1}!`);
-                    break; // Berhenti mencari jika video sudah ketemu
+                    console.log(`✅ Tembus di Server ${i + 1}!`);
+                    break; // Selesai, langsung keluar dari loop
                 }
             } catch (err) {
-                console.log(`❌ Server ${i + 1} Gagal/Down. Beralih ke server berikutnya...`);
-                // Biarkan error, loop akan otomatis lanjut ke server berikutnya
+                console.log(`❌ Server ${i + 1} Gagal (${err.message}). Lanjut ke server berikutnya...`);
             }
         }
 
-        // Hasil Akhir
         if (videoUrlAsli) {
             res.status(200).json({
                 status: "success",
@@ -73,12 +81,12 @@ module.exports = async (req, res) => {
         } else {
             res.status(400).json({
                 status: "error",
-                message: "Semua server API saat ini sedang sibuk/down. Coba lagi dalam beberapa menit."
+                message: "Keamanan Instagram memblokir tarikan ini. Pastikan link adalah Reels publik."
             });
         }
 
     } catch (error) {
-        console.error("Kesalahan sistem utama:", error);
-        res.status(500).json({ status: "error", message: "Sistem pusat Vercel mengalami gangguan." });
+        console.error("Kesalahan fatal Vercel:", error);
+        res.status(500).json({ status: "error", message: "Sistem pusat mengalami gangguan." });
     }
 };
