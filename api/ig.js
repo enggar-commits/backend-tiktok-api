@@ -19,57 +19,51 @@ module.exports = async (req, res) => {
 
     try {
         const cleanUrl = targetUrl.split('?')[0];
-        console.log(`Memulai perburuan dengan penyamaran: ${cleanUrl}`);
+        console.log(`Memulai perburuan di server segar: ${cleanUrl}`);
 
-        // Daftar Server API Publik
+        // DAFTAR SERVER API TERBARU (Update)
+        // Menggunakan kombinasi server yang jarang dilacak oleh Instagram
         const apis = [
-            `https://api.vreden.web.id/api/igdownload?url=${encodeURIComponent(cleanUrl)}`,
-            `https://widipe.com/download/igdl?url=${encodeURIComponent(cleanUrl)}`,
-            `https://api.siputzx.my.id/api/d/igdl?url=${encodeURIComponent(cleanUrl)}`,
-            `https://api.ryzendesu.vip/api/downloader/igdl?url=${encodeURIComponent(cleanUrl)}`
+            `https://api.agatz.my.id/api/igdl?url=${encodeURIComponent(cleanUrl)}`,
+            `https://api.nyxs.pw/dl/ig?url=${encodeURIComponent(cleanUrl)}`,
+            `https://bk9.fun/download/instagram?url=${encodeURIComponent(cleanUrl)}`,
+            `https://delirius-apiofc.vercel.app/download/igdl?url=${encodeURIComponent(cleanUrl)}`
         ];
 
         let videoUrlAsli = null;
 
         for (let i = 0; i < apis.length; i++) {
             try {
-                console.log(`[+] Mengetuk Server ${i + 1} dengan topeng Chrome...`);
+                console.log(`[+] Mengetuk Server ${i + 1}...`);
 
-                // INI KUNCI RAHASIANYA: Menyamar sebagai manusia (Google Chrome Windows)
                 const response = await fetch(apis[i], {
                     method: 'GET',
                     headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                        'Accept': 'application/json, text/plain, */*'
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
                     }
                 });
 
-                if (!response.ok) throw new Error(`Ditolak oleh server (Status: ${response.status})`);
+                // Jika server merespon dengan error (misal 403/500), lewati langsung
+                if (!response.ok) continue;
 
-                const rawText = await response.text();
-                const data = JSON.parse(rawText);
+                const data = await response.json();
 
-                // Mencari letak link MP4
+                // Algoritma Sapu Bersih (Mencari file berakhiran .mp4 di seluruh tumpukan data)
                 let tempUrl = null;
-                if (data && data.data && data.data[0] && data.data[0].url) tempUrl = data.data[0].url;
-                else if (data && data.data && data.data.url) tempUrl = data.data.url;
-                else if (data && data.url) tempUrl = data.url;
-                else {
-                    JSON.stringify(data, (key, value) => {
-                        if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
-                            tempUrl = value;
-                        }
-                        return value;
-                    });
-                }
+                JSON.stringify(data, (key, value) => {
+                    if (!tempUrl && typeof value === 'string' && value.startsWith('http') && value.includes('.mp4')) {
+                        tempUrl = value;
+                    }
+                    return value;
+                });
 
                 if (tempUrl) {
                     videoUrlAsli = tempUrl;
                     console.log(`✅ Tembus di Server ${i + 1}!`);
-                    break; // Selesai, langsung keluar dari loop
+                    break;
                 }
             } catch (err) {
-                console.log(`❌ Server ${i + 1} Gagal (${err.message}). Lanjut ke server berikutnya...`);
+                console.log(`❌ Server ${i + 1} Error/Timeout. Melompat ke server selanjutnya...`);
             }
         }
 
@@ -81,7 +75,7 @@ module.exports = async (req, res) => {
         } else {
             res.status(400).json({
                 status: "error",
-                message: "Keamanan Instagram memblokir tarikan ini. Pastikan link adalah Reels publik."
+                message: "Semua jalur gratis diblokir sementara oleh Instagram. Coba beberapa jam lagi."
             });
         }
 
